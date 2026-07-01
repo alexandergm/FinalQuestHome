@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Урок 3 · Dino Quest</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ground: #535353;
+      --cactus: #5ba832;
+      --accent: #ff6b00;
+      --ink: #292929;
+      --panel: #fff;
+      --shadow: #c4c4c4;
+      --pixel: 4px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background: #f7f7f7;
+      color: var(--ink);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    .sky {
+      background: linear-gradient(180deg, #fefefe, #e8e8e8 60%, #d6d6d6);
+      border-bottom: 4px solid var(--ground);
+      padding: 36px 20px 28px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(10px, 2.6vw, 17px);
+      line-height: 2.2;
+    }
+    .hero h1 em { font-style: normal; color: var(--cactus); }
+    .hero p { color: #888; margin-top: 10px; font-size: 12px; }
+    .bar {
+      background: var(--ink);
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 24px 14px 50px; }
+    .stage {
+      background: var(--panel);
+      border: var(--pixel) solid var(--ink);
+      box-shadow: var(--pixel) var(--pixel) 0 var(--shadow);
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stage-head {
+      background: var(--ink);
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .tag-open { background: var(--cactus); padding: 3px 8px; font-size: 7px; }
+    .stage-inner { padding: 18px 20px 22px; }
+    .pick-hint {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: var(--accent);
+      margin-bottom: 14px;
+      line-height: 1.9;
+    }
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 720px) { .choices { grid-template-columns: 1fr; } }
+    .card {
+      border: 3px solid var(--ink);
+      background: #fafafa;
+      padding: 14px;
+      cursor: pointer;
+      transition: transform 0.35s ease, opacity 0.4s ease, max-height 0.5s ease, padding 0.4s ease;
+      overflow: hidden;
+    }
+    .card:hover:not(.disabled) {
+      transform: translateY(-4px);
+      box-shadow: 6px 6px 0 var(--shadow);
+    }
+    .card .badge {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px;
+      color: var(--cactus);
+      margin-bottom: 8px;
+    }
+    .card .title { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+    .card .desc { color: #666; font-size: 12px; line-height: 1.5; margin-bottom: 10px; }
+    .card .pick-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      color: #fff;
+      background: var(--ink);
+      display: inline-block;
+      padding: 8px 10px;
+    }
+    .warn-key {
+      background: linear-gradient(135deg, #fff8e0 0%, #ffe9a8 100%);
+      border: 2px solid #e6a800;
+      color: #6b4a00;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px;
+      line-height: 1.9;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      box-shadow: 2px 2px 0 rgba(230, 168, 0, 0.35);
+    }
+    .choices.picked .card.disabled {
+      opacity: 0;
+      transform: scale(0.6) translateY(20px);
+      max-height: 0;
+      padding: 0;
+      margin: 0;
+      border-width: 0;
+      pointer-events: none;
+    }
+    .choices.picked .card.active {
+      grid-column: 1 / -1;
+      cursor: default;
+      background: #fff;
+      border-color: var(--cactus);
+      box-shadow: 8px 8px 0 rgba(91,168,50,0.25);
+      animation: cardWin 0.5s ease;
+    }
+    @keyframes cardWin {
+      0% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .choices.picked .card.active .pick-btn { display: none; }
+    .back-btn {
+      display: none;
+      grid-column: 1 / -1;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      line-height: 1.9;
+      margin-top: 4px;
+      padding: 12px 14px;
+      background: #f0f0f0;
+      border: 2px solid var(--ink);
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .back-btn:hover { background: #e0e0e0; }
+    .choices.picked .back-btn { display: block; }
+    .code-box {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 0.6s ease, opacity 0.5s ease, margin 0.4s ease;
+    }
+    .card.active .code-box {
+      max-height: 1200px;
+      opacity: 1;
+      margin-top: 14px;
+    }
+    .code-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .code-view {
+      background: #1a1a2e;
+      color: #cbd5e1;
+      padding: 14px;
+      font-size: 11px;
+      line-height: 1.55;
+      border: 2px solid var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      pointer-events: none;
+    }
+    .assets {
+      border: 3px solid var(--ink);
+      background: #fafafa;
+      padding: 14px 16px 16px;
+      margin-bottom: 16px;
+    }
+    .assets h3 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      line-height: 1.9;
+      margin-bottom: 10px;
+      color: var(--cactus);
+    }
+    .assets p {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    .assets-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 720px) { .assets-grid { grid-template-columns: repeat(2, 1fr); } }
+    .asset-card {
+      border: 2px solid var(--ink);
+      background: #fff;
+      padding: 10px;
+      text-align: center;
+    }
+    .asset-card img {
+      width: 100%;
+      max-height: 56px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      margin-bottom: 8px;
+    }
+    .asset-card .name {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .asset-card a,
+    .asset-card button.dl-btn {
+      display: inline-block;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px;
+      color: #fff;
+      background: var(--ink);
+      padding: 7px 8px;
+      text-decoration: none;
+      border: 2px solid var(--ink);
+      cursor: pointer;
+    }
+    .asset-card a:hover,
+    .asset-card button.dl-btn:hover { background: var(--cactus); }
+    .assets-all {
+      margin-top: 12px;
+      text-align: center;
+    }
+    .assets-all button {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      color: #fff;
+      background: var(--cactus);
+      border: 3px solid var(--ink);
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    .footer {
+      background: var(--ground);
+      color: #999;
+      text-align: center;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      padding: 16px;
+      line-height: 2;
+    }
+    .reset-wrap {
+      max-width: 920px;
+      margin: 0 auto 20px;
+      padding: 0 14px;
+    }
+    .reset-toggle {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      color: #888;
+      background: #eee;
+      border: 2px solid #999;
+      padding: 10px 14px;
+      cursor: pointer;
+      width: 100%;
+    }
+    .reset-toggle:hover { background: #e0e0e0; color: #333; }
+  </style>
+</head>
+<body>
+
+<div class="sky hero">
+  <h1>УРОК 03 · <em>DINO QUEST</em></h1>
+  <p>Выбери карточку в каждом раунде → набери код вручную</p>
+</div>
+<div class="bar"><span>QUEST</span><span id="prog">0 / 10</span><span>▶</span></div>
+
+<div class="wrap">
+
+  <div class="stage" id="s0">
+    <div class="stage-head"><span>STAGE 0 · СТАРТ</span><span class="tag-open">OPEN</span></div>
+    <div class="stage-inner">
+      <div class="assets">
+        <h3>► СКАЧАЙ КАРТИНКИ ДЛЯ ИГРЫ</h3>
+        <p>Положи все 4 файла в папку с твоим <code>index.html</code> (рядом, не в подпапке).</p>
+        <div class="assets-grid">
+          <div class="asset-card">
+            <img data-asset="dino.png" alt="dino">
+            <div class="name">dino.png</div>
+            <button type="button" class="dl-btn" data-asset="dino.png">↓ SAVE</button>
+          </div>
+          <div class="asset-card">
+            <img data-asset="cactus.png" alt="cactus">
+            <div class="name">cactus.png</div>
+            <button type="button" class="dl-btn" data-asset="cactus.png">↓ SAVE</button>
+          </div>
+          <div class="asset-card">
+            <img data-asset="bird.png" alt="bird">
+            <div class="name">bird.png</div>
+            <button type="button" class="dl-btn" data-asset="bird.png">↓ SAVE</button>
+          </div>
+          <div class="asset-card">
+            <img data-asset="cloud.png" alt="cloud">
+            <div class="name">cloud.png</div>
+            <button type="button" class="dl-btn" data-asset="cloud.png">↓ SAVE</button>
+          </div>
+        </div>
+        <div class="assets-all">
+          <button type="button" id="dl-all">↓ СКАЧАТЬ ВСЕ 4 ФАЙЛА</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="s1"></div>
+  <div class="stage" id="s2"></div>
+  <div class="stage" id="s3"></div>
+  <div class="stage" id="s4"></div>
+  <div class="stage" id="s5"></div>
+  <div class="stage" id="s6"></div>
+  <div class="stage" id="s7"></div>
+  <div class="stage" id="s8"></div>
+  <div class="stage" id="s9"></div>
+  <div class="stage" id="s10"></div>
+
+</div>
+
+<div class="reset-wrap">
+  <button type="button" class="reset-toggle" id="reset-btn">↺ СБРОС · СЛЕДУЮЩИЙ УЧЕНИК</button>
+</div>
+
+<div class="footer">TYPE CODE BY HAND · NO COPY</div>
+
+<script>
+document.addEventListener("contextmenu", function(e) { e.preventDefault(); });
+document.addEventListener("copy", function(e) { e.preventDefault(); });
+document.addEventListener("cut", function(e) { e.preventDefault(); });
+document.addEventListener("selectstart", function(e) { e.preventDefault(); });
+document.addEventListener("keydown", function(e) {
+  if (e.key === "F12") e.preventDefault();
+  if (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) e.preventDefault();
+  if (e.ctrlKey && e.key === "u") e.preventDefault();
+  if (e.metaKey && e.altKey && e.key === "i") e.preventDefault();
+});
+
+const STAGES = {
+  1: {
+    title: "STAGE 1 · CSS",
+    hint: "► CHOOSE ONE STYLE · только HTML",
+    cards: {
+      A: { title: "Chrome Classic", desc: "Серая страница и белый холст — как в настоящем Chrome Dino.",
+        code: `// 1) найди <style>...</style> в <head>\n// 2) удали старый стиль, вставь этот:\n\n<style>\nbody {\n  margin: 0;\n  height: 100vh;\n  display: grid;\n  place-items: center;\n  background: #eee;\n}\ncanvas {\n  background: #fff;\n  box-shadow: 0 4px 0 #535353;\n}\n</style>` },
+      B: { title: "Neon Arcade", desc: "Тёмный фон и розовая неоновая рамка вокруг игры.",
+        code: `// 1) найди <style>...</style> в <head>\n// 2) замени на:\n\n<style>\nbody {\n  margin: 0;\n  height: 100vh;\n  display: grid;\n  place-items: center;\n  background: #0a0a14;\n}\ncanvas {\n  background: linear-gradient(to bottom, #1a1c2e, #0f101b);\n  border: 4px solid #ff007f;\n  box-shadow: 0 0 40px rgba(255,0,127,0.35);\n}\n</style>` },
+      C: { title: "Sky Day", desc: "Голубое небо на холсте — игра как солнечный день.",
+        code: `// 1) найди <style>...</style> в <head>\n// 2) замени на:\n\n<style>\nbody {\n  margin: 0;\n  height: 100vh;\n  display: grid;\n  place-items: center;\n  background: #111;\n}\ncanvas {\n  background: linear-gradient(to bottom, #87ceeb, #fff);\n  border: 4px solid #535353;\n  box-shadow: 0 12px 40px #000;\n}\n</style>` }
+    }
+  },
+  2: {
+    title: "STAGE 2 · SCORE",
+    hint: "► CHOOSE ONE SCORE · переменные + draw()",
+    cards: {
+      A: { title: "Score", desc: "Счёт очков в углу — растёт, пока ты жив.",
+        code: `// 1) наверху с другими let:\nlet score = 0;\n\n// 2) в draw(), после clearRect:\nif (!gameOver) {\n  score = score + 1;\n}\n\n// 3) в draw(), перед requestAnimationFrame:\nctx.font = "bold 24px Arial";\nctx.fillText("Score: " + score, 20, 35);` },
+      B: { title: "Meters", desc: "Пробег в метрах — как в оригинальной игре Chrome.",
+        code: `// 1) наверху:\nlet score = 0;\n\n// 2) в draw(), после clearRect:\nif (!gameOver) {\n  score = score + 1;\n}\n\n// 3) в draw(), перед requestAnimationFrame:\nctx.font = "bold 24px monospace";\nctx.fillText("HI: " + Math.floor(score / 10) + " m", 20, 35);` },
+      C: { title: "Now + Best", desc: "Два числа: сейчас и лучший рекорд — сохраняется после F5.",
+        code: `// 1) наверху:\nlet score = 0;\nlet best = Number(localStorage.getItem("dinoBest"));\nif (isNaN(best)) best = 0;\n\n// 2) в draw(), после clearRect:\nif (!gameOver) {\n  score = score + 1;\n  if (score > best) {\n    best = score;\n    localStorage.setItem("dinoBest", best);\n  }\n}\n\n// 3) в draw(), перед requestAnimationFrame:\nctx.font = "bold 24px Arial";\nctx.fillText("Now: " + score, 20, 30);\nctx.fillText("Best: " + best, 20, 55);` }
+    }
+  },
+  3: {
+    title: "STAGE 3 · GAME OVER",
+    hint: "► CHOOSE ONE DEATH SCREEN · внутри if столкновения",
+    cards: {
+      A: { title: "Classic", desc: "Большая надпись GAME OVER и подсказка нажать SPACE.",
+        code: `// в draw(), внутри if (кактус задел dino):\n\ngameOver = true;\nctx.font = "bold 48px Arial";\nctx.textAlign = "center";\nctx.fillText("GAME OVER", 400, 190);\nctx.font = "20px Arial";\nctx.fillText("Press SPACE to restart", 400, 240);\nreturn;` },
+      B: { title: "Red overlay", desc: "Красный экран и твой счёт, когда проиграл.",
+        code: `// в draw(), внутри if (столкновение):\n\ngameOver = true;\nctx.fillStyle = "rgba(200,0,0,0.45)";\nctx.fillRect(0, 0, 800, 400);\nctx.fillStyle = "#fff";\nctx.font = "bold 48px Arial";\nctx.textAlign = "center";\nctx.fillText("GAME OVER", 400, 180);\nctx.fillText("Score: " + score, 400, 230);\nreturn;` },
+      C: { title: "Your message", desc: "Своё сообщение и подпись вместо скучного GAME OVER.",
+        code: `// в draw(), внутри if (столкновение):\n\ngameOver = true;\nctx.textAlign = "center";\nctx.font = "bold 40px Arial";\nctx.fillText("YOU DIED", 400, 170);\nctx.font = "22px Arial";\nctx.fillText("Cactus wins!", 400, 210);\nctx.fillText("Game by: YOUR NAME", 400, 250);\nreturn;` }
+    }
+  },
+  4: {
+    title: "STAGE 4 · CACTUS",
+    hint: "► CHOOSE ONE CACTUS · только кактус, птицы нет",
+    cards: {
+      A: { title: "Random gap", desc: "Кактусы приходят с разными паузами — каждый раз по-новому.",
+        code: `// 1) в draw(), ПОСЛЕ cactusX = cactusX - 5\n// 2) ЗАМЕНИ старый if (cactusX < -50) на:\n\nif (cactusX < -70) {\n  cactusX = 800 + Math.random() * 350;\n}` },
+      B: { title: "Speed up", desc: "Чем дольше живёшь — тем быстрее бежит игра.",
+        code: `// 1) наверху:\nlet cactusSpeed = 5;\n\n// 2) в draw() замени cactusX - 5 на:\ncactusX = cactusX - cactusSpeed;\n\n// 3) в draw(), после score++:\nif (score > 0 && score % 400 === 0) {\n  cactusSpeed = cactusSpeed + 1;\n}` },
+      C: { title: "Hidden wait", desc: "Кактус может подождать за краем экрана — неожиданный выезд.",
+        code: `// 1) наверху:\nlet stopX = 0;\n\n// 2) в draw(), ПОСЛЕ cactusX = cactusX - 5:\nif (cactusX < -70 && stopX === 0) {\n  stopX = -150 - Math.random() * 250;\n}\nif (stopX !== 0 && cactusX < stopX) {\n  cactusX = 800;\n  stopX = 0;\n}\n\n// 3) убери старый if (cactusX < -50) cactusX = 800` }
+    }
+  },
+  5: {
+    title: "STAGE 5 · DINO",
+    hint: "► CHOOSE ONE MOVE · раунд 5C нужен для раунда 6B",
+    cards: {
+      A: { title: "High jump", desc: "Динозавр прыгает выше — легче перепрыгнуть кактус.",
+        code: `// в keydown найди:\n//   jumpSpeed = -15;\n// замени -15 на -22:\n\njumpSpeed = -22;` },
+      B: { title: "Heavy gravity", desc: "Динозавр быстрее падает — прыжок короче и резче.",
+        code: `// в draw() найди:\n//   jumpSpeed = jumpSpeed + 0.8;\n// замени 0.8 на 1.1:\n\njumpSpeed = jumpSpeed + 1.1;` },
+      C: { title: "Duck ↓", desc: "Присед на ↓ — можно пропустить птицу, пройдя под ней.",
+        code: `// 1) наверху:\nlet isDucking = false;\nlet dinoH = 100;\n\nfunction onGround() {\n  return jumpSpeed === 0 && dinoY >= groundY;\n}\n\n// 2) в keydown — добавь ↓, в Space добавь && !isDucking:\nif (e.code === "ArrowDown" && onGround() && !gameOver) {\n  isDucking = true;\n  dinoH = 55;\n}\n\n// 3) новый keyup:\nwindow.addEventListener("keyup", function(e) {\n  if (e.code === "ArrowDown") {\n    isDucking = false;\n    dinoH = 100;\n  }\n});\n\n// 4) в draw — ЗАМЕНИ старую физику dino:\nif (!isDucking) {\n  jumpSpeed = jumpSpeed + 0.8;\n  dinoY = dinoY + jumpSpeed;\n  if (dinoY > groundY) {\n    dinoY = groundY;\n    jumpSpeed = 0;\n  }\n} else {\n  dinoY = groundY + 45;\n  jumpSpeed = 0;\n}\n\n// 5) draw dino — замени размер на dinoH:\nctx.drawImage(dinoImg, 100, dinoY, 100, dinoH);\n\n// кактус: onGround()   птица: !isDucking` },
+    }
+  },
+  6: {
+    title: "STAGE 6 · BIRD",
+    hint: "► CHOOSE ONE BIRD · нужен bird.png · 6B нужен 5C",
+    cards: {
+      A: { title: "Decor", desc: "Птица летит на фоне — красиво, но не опасна.",
+        code: `// 1) наверху (рядом с dinoImg):\nlet birdImg = new Image();\nbirdImg.src = "bird.png";\nlet bird1X = 600;\nlet birdY = 180;\n\n// 2) в draw(), после clearRect:\nbird1X = bird1X - 4;\nif (bird1X < -60) bird1X = 850;\n\n// 3) в draw(), ПЕРЕД dino (фон):\nctx.drawImage(birdImg, bird1X, birdY, 45, 35);\n\n// 4) НЕ добавляй gameOver от птицы!` },
+      B: { title: "Enemy", desc: "Птица-враг после кактуса — пригнись на ↓, иначе Game Over.",
+        code: `// 1) наверху:\nlet birdImg = new Image();\nbirdImg.src = "bird.png";\nlet bird1X = 850;\nlet birdOn = false;\n\n// 2) в draw(), после движения кактуса:\nif (!birdOn && cactusX < 50) {\n  birdOn = true;\n  bird1X = 850;\n}\nif (birdOn) {\n  bird1X = bird1X - 5;\n  ctx.drawImage(birdImg, bird1X, 220, 60, 45);\n  if (bird1X < -80) {\n    birdOn = false;\n    cactusX = 800;\n  }\n}\n\n// 3) в draw(), отдельный if — удар птицы:\nif (birdOn && bird1X < 200 && bird1X > 90 && !isDucking) {\n  gameOver = true;\n  // ... твой GAME OVER из раунда 3 ...\n  return;\n}\n\n// 4) если делал 4C stopX:\n//    в 4C: cactusX = -999 (не 800)\n//    respawn cactusX = 800 — в шаг 2, когда bird уехала` },
+      C: { title: "Wing flap", desc: "Птица машет крыльями вверх-вниз — живой декор.",
+        code: `// 1) наверху:\nlet tick = 0;\n\n// 2) в draw(), перед рисованием птицы:\ntick = tick + 1;\nlet wing = Math.sin(tick * 0.25) * 12;\n\n// 3) вместо обычного drawImage птицы:\nctx.drawImage(birdImg, bird1X, birdY + wing, 50, 40);` }
+    }
+  },
+  7: {
+    title: "STAGE 7 · SKY",
+    hint: "► CHOOSE ONE SKY · нужен cloud.png для A и B",
+    cards: {
+      A: { title: "Parallax", desc: "Три облака плывут с разной скоростью — небо кажется глубоким.",
+        code: `// 1) наверху:\nlet cloudImg = new Image();\ncloudImg.src = "cloud.png";\nlet cloud1X = 100;\nlet cloud2X = 400;\nlet cloud3X = 700;\n\n// 2) в draw(), после clearRect — движение:\ncloud1X = cloud1X - 0.4;\ncloud2X = cloud2X - 0.6;\ncloud3X = cloud3X - 0.3;\nif (cloud1X < -120) cloud1X = 850;\nif (cloud2X < -120) cloud2X = 850;\nif (cloud3X < -120) cloud3X = 850;\n\n// 3) в draw(), ПЕРЕД dino:\nctx.drawImage(cloudImg, cloud1X, 40, 100, 50);\nctx.drawImage(cloudImg, cloud2X, 80, 80, 40);\nctx.drawImage(cloudImg, cloud3X, 25, 110, 55);` },
+      B: { title: "Big clouds", desc: "Два больших облака медленно плывут — небо выглядит объёмнее.",
+        code: `// 1) наверху:\nlet cloudImg = new Image();\ncloudImg.src = "cloud.png";\nlet cloud1X = 100;\nlet cloud2X = 500;\n\n// 2) в draw(), после clearRect:\ncloud1X = cloud1X - 0.5;\ncloud2X = cloud2X - 0.5;\nif (cloud1X < -180) cloud1X = 850;\nif (cloud2X < -180) cloud2X = 850;\n\n// 3) в draw(), ПЕРЕД dino:\nctx.drawImage(cloudImg, cloud1X, 20, 160, 70);\nctx.drawImage(cloudImg, cloud2X, 60, 120, 55);` },
+      C: { title: "Night N", desc: "Нажми N — игра погружается в ночь.",
+        code: `// 1) наверху:\nlet night = false;\n\n// 2) в keydown:\nif (e.code === "KeyN") {\n  night = !night;\n}\n\n// 3) в draw(), в САМОМ КОНЦЕ (поверх всего):\nif (night) {\n  ctx.fillStyle = "rgba(0,0,40,0.35)";\n  ctx.fillRect(0, 0, 800, 400);\n}` }
+    }
+  },
+  8: {
+    title: "STAGE 8 · WOW",
+    hint: "► CHOOSE ONE EFFECT · всё в draw()",
+    cards: {
+      A: { title: "Jump color", desc: "Динозавр меняет цвет, пока летит в прыжке.",
+        code: `// 1) в draw(), ПЕРЕД drawImage dino:\nif (dinoY < groundY) {\n  ctx.filter = "hue-rotate(90deg)";\n}\n\n// 2) сразу ПОСЛЕ drawImage dino:\nctx.filter = "none";` },
+      B: { title: "Screen shake", desc: "Экран трясётся, когда ты проиграл.",
+        code: `// 1) в САМОМ НАЧАЛЕ draw():\nctx.setTransform(1, 0, 0, 1, 0, 0);\n\n// 2) сразу после, если gameOver:\nif (gameOver) {\n  let s = Math.random() * 8 - 4;\n  ctx.setTransform(1, 0, 0, 1, s, s);\n}` },
+      C: { title: "Jump trail", desc: "За динозавром остаётся полупрозрачный след в прыжке.",
+        code: `// в draw(), ПЕРЕД drawImage dino:\nif (dinoY < groundY) {\n  ctx.globalAlpha = 0.25;\n  ctx.drawImage(dinoImg, 88, dinoY + 15, 100, 100);\n  ctx.globalAlpha = 1;\n}` }
+    }
+  },
+  9: {
+    title: "STAGE 9 · SIGN",
+    hint: "► CHOOSE ONE SIGNATURE",
+    cards: {
+      A: { title: "Title", desc: "Твоё имя во вкладке браузера — «CYBER DINO — …».",
+        code: `// в <head> замени <title>:\n<title>CYBER DINO — Your Name</title>` },
+      B: { title: "Watermark", desc: "Мелкая подпись «made by…» в правом нижнем углу.",
+        code: `// в draw(), перед requestAnimationFrame:\nctx.font = "14px Arial";\nctx.textAlign = "right";\nctx.fillStyle = "#888";\nctx.fillText("made by YourName", 790, 390);` },
+      C: { title: "Hints", desc: "Подсказки клавиш SPACE и ↓ внизу экрана.",
+        code: `// в draw(), перед requestAnimationFrame:\nctx.font = "14px Arial";\nctx.fillStyle = "#666";\nctx.textAlign = "left";\nctx.fillText("SPACE — jump", 20, 380);\nctx.fillText("DOWN — duck", 20, 395);` }
+    }
+  },
+  10: {
+    title: "STAGE 10 · FINAL",
+    hint: "► FINAL PICK · потом галерея!",
+    cards: {
+      A: { title: "Jump Flash", desc: "При каждом прыжке — белая вспышка, как в супер-играх.",
+        code: `// 1) наверху:\nlet flash = 0;\n\n// 2) в keydown, внутри прыжка Space (рядом с jumpSpeed = -15):\nflash = 14;\n\n// 3) в draw(), в САМОМ КОНЦЕ (поверх всего):\nif (flash > 0) {\n  flash = flash - 1;\n  ctx.fillStyle = "rgba(255,255,255," + flash / 14 * 0.55 + ")";\n  ctx.fillRect(0, 0, 800, 400);\n}` },
+      B: { title: "BOOM!", desc: "На Game Over экран темнеет и появляется огромное BOOM!",
+        code: `// в draw(), внутри if (gameOver) { ... }\n// сразу ПОСЛЕ gameOver = true:\n\nctx.fillStyle = "rgba(0,0,0,0.5)";\nctx.fillRect(0, 0, 800, 400);\nctx.font = "bold 72px Arial";\nctx.textAlign = "center";\nctx.fillStyle = "#ff3300";\nctx.fillText("BOOM!", 400, 200);\n\n// дальше — твой GAME OVER из раунда 3` },
+      C: { title: "Medal", desc: "Медаль GOLD или SILVER на Game Over — по твоим очкам.",
+        code: `// внутри if (gameOver), после текста GAME OVER:\nctx.textAlign = "center";\nif (score > 1000) ctx.fillText("GOLD!", 400, 300);\nelse if (score > 500) ctx.fillText("SILVER!", 400, 300);\nelse ctx.fillText("TRY AGAIN!", 400, 300);` }
+    }
+  }
+};
+
+// ⚠ KEY — подсказки (не блокируют выбор)
+const CARD_KEY = {
+  "2:A": "Нужен для: 3B, 4B, 10C",
+  "2:B": "Нужен для: 3B, 4B, 10C",
+  "2:C": "Нужен для: 3B, 4B, 10C",
+  "5:C": "Нужен для: 6B (птица-враг, присед)"
+};
+
+const PICKS_KEY = "dinoQuestPicks";
+
+function getPicks() {
+  try {
+    return JSON.parse(localStorage.getItem(PICKS_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function savePick(stage, letter) {
+  const picks = getPicks();
+  picks[String(stage)] = letter;
+  localStorage.setItem(PICKS_KEY, JSON.stringify(picks));
+  updateProg();
+}
+
+function updateProg() {
+  const picks = getPicks();
+  let n = 0;
+  for (let i = 1; i <= 10; i++) {
+    if (picks[String(i)]) n++;
+  }
+  document.getElementById("prog").textContent = n + " / 10";
+}
+
+function resetProgress() {
+  localStorage.removeItem(PICKS_KEY);
+  localStorage.removeItem("dinoQuestUnlocked");
+  location.reload();
+}
+
+function decorateCard(stage, letter, card) {
+  const keyMsg = CARD_KEY[stage + ":" + letter];
+  if (keyMsg) {
+    const warn = document.createElement("div");
+    warn.className = "warn-key";
+    warn.textContent = "⚠ KEY · " + keyMsg;
+    card.insertBefore(warn, card.querySelector(".title"));
+  }
+}
+
+function restorePick(stage) {
+  const picks = getPicks();
+  const letter = picks[String(stage)];
+  if (!letter || !STAGES[stage] || !STAGES[stage].cards[letter]) return;
+  const choicesEl = document.getElementById("choices-" + stage);
+  if (!choicesEl || choicesEl.classList.contains("picked")) return;
+  pickCard(stage, letter, STAGES[stage].cards[letter].code, true);
+}
+
+function restoreAllPicks() {
+  for (let i = 1; i <= 10; i++) restorePick(i);
+  updateProg();
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function buildStage(num) {
+  const el = document.getElementById("s" + num);
+  const data = STAGES[num];
+
+  el.innerHTML =
+    '<div class="stage-head"><span>' + data.title + '</span><span class="tag-open">OPEN</span></div>' +
+    '<div class="stage-inner">' +
+      '<div class="pick-hint">' + data.hint + '</div>' +
+      '<div class="choices" id="choices-' + num + '"></div>' +
+    '</div>';
+
+  const choicesEl = el.querySelector(".choices");
+  ["A","B","C"].forEach(function(letter) {
+    const c = data.cards[letter];
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.letter = letter;
+    card.innerHTML =
+      '<div class="badge">' + letter + '</div>' +
+      '<div class="title">' + escapeHtml(c.title) + '</div>' +
+      '<div class="desc">' + escapeHtml(c.desc) + '</div>' +
+      '<span class="pick-btn">SELECT ▶</span>' +
+      '<div class="code-box">' +
+        '<div class="code-label">► TYPE THIS CODE:</div>' +
+        '<div class="code-view"></div>' +
+      '</div>';
+    card.addEventListener("click", function() {
+      if (choicesEl.classList.contains("picked")) return;
+      pickCard(num, letter, c.code);
+    });
+    decorateCard(num, letter, card);
+    choicesEl.appendChild(card);
+  });
+
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "back-btn";
+  backBtn.textContent = "← ВЫБРАТЬ ДРУГОЕ";
+  backBtn.addEventListener("click", function() {
+    unpickStage(num);
+  });
+  choicesEl.appendChild(backBtn);
+}
+
+function unpickStage(num) {
+  const choicesEl = document.getElementById("choices-" + num);
+  if (!choicesEl) return;
+  choicesEl.classList.remove("picked");
+  choicesEl.querySelectorAll(".card").forEach(function(card) {
+    card.classList.remove("active", "disabled");
+    card.querySelector(".code-view").textContent = "";
+  });
+  const picks = getPicks();
+  delete picks[String(num)];
+  localStorage.setItem(PICKS_KEY, JSON.stringify(picks));
+  updateProg();
+}
+
+function pickCard(num, letter, code, silent) {
+  const choicesEl = document.getElementById("choices-" + num);
+  const cards = choicesEl.querySelectorAll(".card");
+  cards.forEach(function(card) {
+    if (card.dataset.letter === letter) {
+      card.classList.add("active");
+      card.querySelector(".code-view").textContent = code;
+    } else {
+      card.classList.add("disabled");
+    }
+  });
+  choicesEl.classList.add("picked");
+  savePick(num, letter);
+}
+
+for (let i = 1; i <= 10; i++) buildStage(i);
+restoreAllPicks();
+
+document.getElementById("reset-btn").addEventListener("click", resetProgress);
+
+function downloadAsset(name) {
+  fetch(name)
+    .then(function(r) {
+      if (!r.ok) throw new Error("404");
+      return r.blob();
+    })
+    .then(function(blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 500);
+    })
+    .catch(function() {
+      window.open(name, "_blank");
+    });
+}
+
+function initAssets() {
+  document.querySelectorAll("img[data-asset]").forEach(function(el) {
+    el.src = el.getAttribute("data-asset");
+  });
+  document.querySelectorAll(".dl-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      downloadAsset(btn.getAttribute("data-asset"));
+    });
+  });
+  const allBtn = document.getElementById("dl-all");
+  if (allBtn) {
+    allBtn.addEventListener("click", function() {
+      const files = ["dino.png", "cactus.png", "bird.png", "cloud.png"];
+      files.forEach(function(name, i) {
+        setTimeout(function() { downloadAsset(name); }, i * 350);
+      });
+    });
+  }
+}
+
+initAssets();
+</script>
+
+</body>
+</html>
